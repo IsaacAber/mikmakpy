@@ -1,7 +1,7 @@
 """
 mikmakpy.connection
 ─────────────────
-Owns the socket. Connects, receives, splits on \x00, fires raw messages up.
+Provides the Connection class for managing low-level socket communication with the Mikmak servers.
 """
 
 from socket import socket, AF_INET, SOCK_STREAM, IPPROTO_TCP
@@ -48,7 +48,9 @@ class Connection:
                     print(f"\n{'='*60}")
                     print(f"[DECODE ERROR] Failed to decode buffer!")
                     print(f"Exception: {res.error}")
-                    print(f"Buffer content (truncated 500 chars): '{buffer[:500]}' {'(truncated)' if len(buffer) > 500 else ''}")
+                    print(
+                        f"Buffer content (truncated 500 chars): '{buffer[:500]}' {'(truncated)' if len(buffer) > 500 else ''}"
+                    )
                     print(f"{'='*60}\n")
                     continue
 
@@ -61,7 +63,9 @@ class Connection:
                         print(f"[ERROR] Message handler crashed!")
                         print(f"{'='*60}")
                         print(f"Exception: {type(e).__name__}: {e}")
-                        print(f"Message that caused error: '{msg[:200]}' {'(truncated 200 chars)' if len(msg) > 200 else ''}")
+                        print(
+                            f"Message that caused error: '{msg[:200]}' {'(truncated 200 chars)' if len(msg) > 200 else ''}"
+                        )
                         print(f"\nFull traceback:")
                         traceback.print_exc()
                         print(f"{'='*60}\n")
