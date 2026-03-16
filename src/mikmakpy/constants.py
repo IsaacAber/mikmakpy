@@ -1,12 +1,13 @@
 """
 mikmakpy.constants
 ─────────────────
-Defines game related constants: room IDs, safe chat message IDs, emote/dance IDs, etc.
+Game constants and enums: server names, logger levels, emote/dance IDs,
+safe-chat message IDs, and the Result type used throughout the library.
 """
 
 from enum import IntEnum, StrEnum
 
-# Result class for functions that can return either a value or an error message. (mostly used for parsing functions)
+# Result type — used by parse/decode functions to return a value or an error without exceptions.
 from dataclasses import dataclass
 from typing import Generic, TypeVar, Optional
 
@@ -28,7 +29,7 @@ class Server(StrEnum):
 
 
 class LoggerLevel(StrEnum):
-    """Keys recognised by the logger_levels set."""
+    """Log categories for the logger_levels set on MikmakLoginClient."""
 
     INCOMING = "incoming"
     CONNECTION_CHANGE = "connection_change"

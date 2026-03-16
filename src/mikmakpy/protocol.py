@@ -1,7 +1,11 @@
 """
 mikmakpy.protocol
 ─────────────────
-
+Encoding, decoding, and parsing for the Mikmak network protocol.
+- encode: build outgoing sys (XML) and xt (JSON) messages.
+- decode: split raw byte buffers and parse JSON/XML.
+- parse: extract structured data from specific server responses
+         (server list, room list, login response, achievements, inventory).
 """
 
 import ast
@@ -52,7 +56,7 @@ class decode:
 
     @staticmethod
     def xt(msg: str) -> Result[dict]:
-        """Try to parse a JSON xt message. Returns dict or None."""
+        """Parse a JSON xt message string into a dict."""
         try:
             return Result(ok=True, value=loads(msg))
         except Exception as e:
@@ -60,7 +64,7 @@ class decode:
 
     @staticmethod
     def xml(msg: str) -> Result[ET.Element]:
-        """Try to parse an XML message. Returns the root Element or an error."""
+        """Parse an XML message string into an ElementTree root."""
         try:
             root = ET.fromstring(msg)
             return Result(ok=True, value=root)

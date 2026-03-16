@@ -1,7 +1,9 @@
 """
 mikmakpy.events
 ─────────────────
-Provides an event bus for handling packets and other events in a decoupled way.
+Minimal event bus. Register handlers with @client.on('event_name')
+and dispatch with client.emit('event_name', *args).
+Base class for MikmakLoginClient.
 """
 
 

@@ -1,7 +1,9 @@
 """
 mikmakpy.connection
 ─────────────────
-Provides the Connection class for managing low-level socket communication with the Mikmak servers.
+Low-level TCP socket wrapper. Handles connecting, sending, and a blocking
+receive loop that splits null-terminated messages and dispatches them
+via callbacks. Used internally by MikmakLoginClient.
 """
 
 from socket import socket, AF_INET, SOCK_STREAM, IPPROTO_TCP
@@ -10,9 +12,8 @@ from .protocol import encode, decode
 
 
 class Connection:
-    def __init__(self, on_message, on_disconnect, on_connect=None):
+    def __init__(self, on_message, on_connect=None):
         self._on_message = on_message
-        self._on_disconnect = on_disconnect
         self._on_connect = on_connect
         self._sock: socket | None = None
         self._running = False
@@ -26,6 +27,7 @@ class Connection:
             self._on_connect()
 
     def send(self, message: str):
+        """Fire-and-forget: silently fails if socket is dead so callers don't need to guard every send."""
         if not self._sock:
             return
         try:
@@ -34,13 +36,24 @@ class Connection:
             print(f"[send error] {e}")
 
     def listen(self):
-        """Blocking receive loop. Call after connect()."""
+        """Blocking receive loop. Call after connect().
+
+        Exception contract:
+        - TimeoutError from recv()  → expected (settimeout), just retry.
+        - Exception in on_message() → logged here so one bad message doesn't kill the connection.
+        - Everything else (socket broken, KeyboardInterrupt, etc.) → propagates to caller.
+        - finally → always closes the socket.
+        """
         buffer = bytearray()
-        while self._running:
-            try:
-                chunk = self._sock.recv(8192)
+        try:
+            while self._running:
+                try:
+                    chunk = self._sock.recv(8192)
+                except TimeoutError:
+                    continue  # settimeout(10) fires here regularly, just retry
+
                 if not chunk:
-                    break
+                    break  # server closed connection gracefully
                 buffer.extend(chunk)
 
                 res = decode.buffer(buffer)
@@ -56,12 +69,11 @@ class Connection:
 
                 messages, buffer = res.value
                 for msg in messages:
-                    try:
+                    try:  # isolate handler crashes so one bad message doesn't kill the connection
                         self._on_message(msg)
                     except Exception as e:
                         print(f"\n{'='*60}")
                         print(f"[ERROR] Message handler crashed!")
-                        print(f"{'='*60}")
                         print(f"Exception: {type(e).__name__}: {e}")
                         print(
                             f"Message that caused error: '{msg[:200]}' {'(truncated 200 chars)' if len(msg) > 200 else ''}"
@@ -69,23 +81,11 @@ class Connection:
                         print(f"\nFull traceback:")
                         traceback.print_exc()
                         print(f"{'='*60}\n")
-            except TimeoutError:
-                continue
-            # except KeyboardInterrupt:
-            #     print("Keyboard interrupt received, shutting down connection...")
-                
-            except Exception as e:
-                print(f"\n{'='*60}")
-                print(f"[RECV ERROR] Connection broken!")
-                print(f"Exception: {type(e).__name__}: {e}")
-                traceback.print_exc()
-                print(f"{'='*60}\n")
-                break
-
-        self.close()
-        self._on_disconnect()
+        finally:
+            self.close()
 
     def close(self):
+        """Idempotent — safe to call multiple times or on an already-dead socket."""
         self._running = False
         if self._sock:
             try:

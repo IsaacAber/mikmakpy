@@ -1,10 +1,11 @@
 """
 mikmakpy.login
 ──────────────
-
+High-level client that handles the full Mikmak login flow:
+initial handshake → server list → server switch → game-server login → room join.
+Built on top of EventBus so callers can hook into events like 'server_list' or 'message'.
 """
 
-from signal import signal, SIGINT, SIGTERM
 from time import sleep
 from hashlib import md5
 from uuid import getnode as get_mac
@@ -31,14 +32,24 @@ class MikmakLoginClient(EventBus):
         starting_ip: str = "213.8.147.198",
         port: int = 443,
     ):
-        """Initializes the MikmakLoginClient with the provided configuration.
-        username: Your Mikmak username plain text
-        password: Your Mikmak password plain text
-        logger_levels: Set of LoggerLevel enums to control what kind of logs you want to see
-        mac_address: The MAC address of your device, used for username derivation. By default it uses the actual MAC address of the device, but you can override it if neccessary
-        server_to_join: The server to auto-join after login, if None it won't auto-join any server and just stop after receiving the server list
-        reconnection_delays: A tuple of two integers, the first is the delay in seconds for reconnect and the second is for server switch.
-        max_retries: The maximum number of reconnection attempts before giving up and disconnecting, set to 0 for infinite retries
+        """Initialize the client.
+
+        Args:
+            username: Mikmak username in plain text.
+            password: Mikmak password in plain text.
+            logger_levels: Set of LoggerLevel values controlling which log categories are printed.
+            mac_address: Device MAC address used for username derivation. Defaults to
+                the real MAC; override for deterministic logins (e.g. tests).
+            server_to_join: Server to auto-join after login. None to stop after
+                receiving the server list.
+            reconnection_delays: (retry_delay, server_switch_delay) in seconds.
+            max_retries: Max reconnection attempts on unexpected disconnects.
+                0 means infinite retries.
+            clean_ingame: Strip empty rooms / zero-capacity servers from parsed lists.
+                Cosmetic only — does not affect the connection.
+            starting_ip: IP for the initial login server. The client switches to the
+                game server's IP automatically after the server list.
+            port: Port for the initial connection. Rarely needs changing.
         """
         super().__init__()
         self.username = username
@@ -95,7 +106,7 @@ class MikmakLoginClient(EventBus):
         self.server_to_join = server_to_join
         self.reconnection_delays = reconnection_delays
         self.max_retries = max_retries
-        self.clean_ingame = clean_ingame  # Try to make the game state as clean as possible, for example remove empty rooms from the room list, or servers with 0 capacity from the server list. This is just a quality of life thing for users of the client, it has no effect on the actual connection or login process. just remove data that is not useful while giving the option to keep it if someone wants to use it for something.
+        self.clean_ingame = clean_ingame
         self.starting_ip = starting_ip
         self.port = port
 
@@ -107,7 +118,7 @@ class MikmakLoginClient(EventBus):
         self._switching_servers = False
         self._retry_count = 0
 
-        # State collected from proccessing messages, can be used by subclass or event handlers or internal logic as needed
+        # State populated by message handlers; accessible to subclasses, event handlers, and callers
         self.ingame_state = {
             "username": None,
             "user_id": None,
@@ -123,24 +134,57 @@ class MikmakLoginClient(EventBus):
         # ── nested namespaces ──────────────────────────────────────────────
         self._send = self._SendInternal(self)
 
-    # Public API
+    # ── Connection management ──
     def connect(self):
-        """Start the client. Blocks until stopped."""
-        signal(SIGINT, self._exit_signal_handler)
-        signal(SIGTERM, self._exit_signal_handler)
+        """Start the client. Blocks until stopped.
+
+        Exception contract:
+        - finally → always calls disconnect(), ensuring socket cleanup on any exit
+                    (KeyboardInterrupt, unhandled error, normal return).
+        - Individual _run() failures are caught inside _run() and return here
+          so the while loop can decide whether to retry or stop.
+        """
         self._running = True
-        self._run()
+        try:
+            while self._running:
+                self._run()
+
+                if not self._running:
+                    break # disconnect() was called intentionally
+
+                if self._switching_servers:
+                    self._switching_servers = False
+                    if LoggerLevel.CONNECTION_CHANGE in self.logger_levels:
+                        print(
+                            f"[!] Waiting {self.reconnection_delays[1]} seconds before switching servers..."
+                        )
+                    sleep(self.reconnection_delays[1])
+                    continue
+
+                if self.max_retries != 0 and self._retry_count >= self.max_retries:
+                    if LoggerLevel.CONNECTION_CHANGE in self.logger_levels:
+                        print("[!] Maximum reconnection attempts reached. Stopping client.")
+                    break
+
+                if self.max_retries > 0:
+                    self._retry_count += 1
+                if LoggerLevel.CONNECTION_CHANGE in self.logger_levels:
+                    print(
+                        f"[!] Disconnected. Attempting to reconnect ({self._retry_count}/{self.max_retries if self.max_retries > 0 else '∞'}) in {self.reconnection_delays[0]} seconds..."
+                    )
+        finally:
+            self.disconnect() # ensure resources are cleaned up on any kind of exit
 
     def disconnect(self):
-        """Tear down the connection."""
+        """Stop the client and close the socket. Idempotent."""
         self._running = False
         if self._conn:
             self._conn.close()
             self._conn = None
 
-    # Private methods
+    # ── Nested namespaces ──
     class _SendInternal:
-        """Low-level send primitives. Access via client._send.*"""
+        """Convenience wrappers for sending protocol messages. Access via client._send.*"""
 
         def __init__(self, client: "MikmakLoginClient"):
             self._c = client
@@ -156,13 +200,7 @@ class MikmakLoginClient(EventBus):
 
         def sys(self, action: str, body: str, r: int = 0):
             self.raw(encode.sys(action, body, r))
-
-    # Connection cycle
-    def _exit_signal_handler(self, signum, frame):
-        if LoggerLevel.CONNECTION_CHANGE in self.logger_levels:
-            print("[!] Signal received, shutting down...")
-        self.disconnect()
-
+    
     def _on_connect(self):
         if LoggerLevel.CONNECTION_CHANGE in self.logger_levels:
             ip = self.starting_ip
@@ -176,36 +214,6 @@ class MikmakLoginClient(EventBus):
         if not self._is_first_connection:
             self._send.sys("verChk", "<ver v='165' />")
 
-    def _on_disconnect(self):
-        if self._running and (
-            self._retry_count < self.max_retries or self.max_retries == 0
-        ):
-            if not self._switching_servers and self.max_retries > 0:
-                self._retry_count += 1
-                if LoggerLevel.CONNECTION_CHANGE in self.logger_levels:
-                    print(
-                        f"[!] Disconnected. Attempting to reconnect ({self._retry_count}/{self.max_retries}) in {self.reconnection_delays[0]} seconds..."
-                    )
-
-            if self._switching_servers:
-                self._switching_servers = False
-                if LoggerLevel.CONNECTION_CHANGE in self.logger_levels:
-                    print(
-                        f"[!] Waiting {self.reconnection_delays[1]} seconds before switching servers..."
-                    )
-                sleep(self.reconnection_delays[1])
-            else:
-                if LoggerLevel.CONNECTION_CHANGE in self.logger_levels:
-                    print(
-                        f"[!] Waiting {self.reconnection_delays[0]} seconds before reconnecting..."
-                    )
-                sleep(self.reconnection_delays[0])
-            self._run()
-        else:
-            if LoggerLevel.CONNECTION_CHANGE in self.logger_levels:
-                print("[!] Disconnected. No more reconnection attempts will be made.")
-            self.disconnect()
-
     def _run(self):
         ip = self.starting_ip
         port = self.port
@@ -216,19 +224,23 @@ class MikmakLoginClient(EventBus):
 
         self._conn = Connection(
             on_message=self._on_message,
-            on_disconnect=self._on_disconnect,
             on_connect=self._on_connect,
         )
 
         try:
-            self._conn.connect(ip, port)
-            self._conn.listen()
+            self._conn.connect(ip, port)  # can throw: refused, DNS, timeout
+            self._conn.listen()           # can throw: socket broken, KeyboardInterrupt
         except Exception as e:
+            # TCP connect failed or socket broke unexpectedly — log and let the
+            # while loop in connect() decide whether to retry or give up.
+            # KeyboardInterrupt (BaseException) is NOT caught here — it propagates
+            # up to connect()'s try/finally which calls disconnect().
             if LoggerLevel.INTERNAL_ERROR in self.logger_levels:
                 print(f"[!] Connection error: {e}")
-            self._on_disconnect()
+        finally:
+            self._conn.close()  # always clean up, idempotent
 
-    # ── Message handler ──────────────────────────────────────────────────────
+    # ── Message handler ──
     def _on_message(self, msg: str):
         if LoggerLevel.INCOMING in self.logger_levels:
             print(f"[←] {msg}")
@@ -238,7 +250,8 @@ class MikmakLoginClient(EventBus):
         self.emit("message", msg)
 
     def _handle_login_messages(self, msg: str):
-        """Handle messages relevant to the login process. in both connection phases."""
+        """Process login-flow messages across both connection phases
+        (initial login server and game server after switch)."""
         if msg.startswith("<cross-domain-policy>"):
             if self._is_first_connection:
                 self._send.sys("verChk", "<ver v='165' />")
@@ -290,7 +303,7 @@ class MikmakLoginClient(EventBus):
                 )
             self.disconnect()
 
-        # here ends the first connection phase, the next messages are from the game server after we've logged in and switched servers, so we can handle them separately if we want
+        # ── second connection phase (game server) ──
         elif "action='rmList'" in msg:
             self._retry_count = 0 # successful connection, reset retry count
             parsed = parse.room_list(msg, self.clean_ingame)
@@ -310,7 +323,7 @@ class MikmakLoginClient(EventBus):
             self.ingame_state["login_res"] = parsed.value
             self.emit("login_res", parsed.value)
 
-        # handle this on login logic too because, it's before the client can really do anything, so might as well have it here.
+        # Achievements arrive early in the game-server login, before the client is fully usable.
         elif '"_cmd":"achivment_res"' in msg:
             parsed = parse.achievement_res(msg)
             if not parsed.ok:
@@ -387,7 +400,7 @@ class MikmakLoginClient(EventBus):
         else:
             pass
 
-    # ── Hooks for subclass ───────────────────────────────────────────────────
-
+    # ── Hooks for subclasses ──
     def _handle_game_messages(self, msg: str):
+        """Override in subclasses (e.g. MikmakIngameClient) to handle post-login game messages."""
         pass

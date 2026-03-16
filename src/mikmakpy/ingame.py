@@ -1,12 +1,14 @@
 """
 mikmakpy.ingame
 ─────────────────
-
+Extends MikmakLoginClient with in-game message handling (inventory, movement,
+chat, etc.) for use after the login flow completes and the client has joined
+a game server room.
 """
 from .login import MikmakLoginClient
 
 class MikmakIngameClient(MikmakLoginClient):
-    """
-    MikmakIngameClient extends MikmakLoginClient to handle in-game events and interactions after successfully logging in and joining a game server. It provides additional functionality for parsing in-game messages, managing the game state, and responding to various in-game events such as room lists, inventory updates, and more. This class is designed to be used after the initial login process is complete and the client has switched to the game server.
+    """Subclass of MikmakLoginClient that overrides _handle_game_messages()
+    to process post-login in-game events (inventory, chat, room changes, etc.).
     """
     
