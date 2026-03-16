@@ -17,6 +17,7 @@ def test_login_only():
         username=getenv("USERNAME", ""),
         password=getenv("PASSWORD", ""),
         logger_levels=logger_levels,
+        mac_address="00:11:22:33:44:55",  # Use a fixed MAC address for testing to ensure consistent username derivation
         server_to_join=None,
     )
 
@@ -41,6 +42,7 @@ def test_login_to_end():
         username=getenv("USERNAME", ""),
         password=getenv("PASSWORD", ""),
         logger_levels=logger_levels,
+        mac_address="00:11:22:33:44:55",  # Use a fixed MAC address for testing to ensure consistent username derivation
         server_to_join=Server.KIWI,
     )
 

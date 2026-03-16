@@ -94,3 +94,4 @@ def test_parse_achievement_res():
 
     # Update list should be shorter than full snapshot
     assert len(dataB["achievements"]) < len(dataA["achievements"])
+

@@ -71,6 +71,9 @@ class Connection:
                         print(f"{'='*60}\n")
             except TimeoutError:
                 continue
+            # except KeyboardInterrupt:
+            #     print("Keyboard interrupt received, shutting down connection...")
+                
             except Exception as e:
                 print(f"\n{'='*60}")
                 print(f"[RECV ERROR] Connection broken!")

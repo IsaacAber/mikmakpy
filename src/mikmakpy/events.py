@@ -1,7 +1,7 @@
 """
 mikmakpy.events
 ─────────────────
-Provides an event bus for handling in-game events and interactions.
+Provides an event bus for handling packets and other events in a decoupled way.
 """
 
 
