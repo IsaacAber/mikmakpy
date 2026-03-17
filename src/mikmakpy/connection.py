@@ -12,7 +12,7 @@ from .protocol import encode, decode
 
 
 class Connection:
-    def __init__(self, on_message, on_connect=None):
+    def __init__(self, on_message: callable, on_connect: callable | None = None):
         self._on_message = on_message
         self._on_connect = on_connect
         self._sock: socket | None = None
@@ -51,6 +51,8 @@ class Connection:
                     chunk = self._sock.recv(8192)
                 except TimeoutError:
                     continue  # settimeout(10) fires here regularly, just retry
+                except OSError:
+                    break  # socket closed from another thread (e.g. disconnect timer)
 
                 if not chunk:
                     break  # server closed connection gracefully

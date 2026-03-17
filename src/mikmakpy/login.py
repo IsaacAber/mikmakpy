@@ -9,11 +9,12 @@ Built on top of EventBus so callers can hook into events like 'server_list' or '
 from time import sleep
 from hashlib import md5
 from uuid import getnode as get_mac
+from traceback import print_stack
 
 from .events import EventBus
 from .constants import Server, LoggerLevel
 from .connection import Connection
-from .protocol import encode, parse
+from .protocol import decode, encode, parse
 
 
 class MikmakLoginClient(EventBus):
@@ -119,7 +120,7 @@ class MikmakLoginClient(EventBus):
         self._retry_count = 0
 
         # State populated by message handlers; accessible to subclasses, event handlers, and callers
-        self.ingame_state = {
+        self.ingame_state: dict[str, any] = {
             "username": None,
             "user_id": None,
             "rank": None,
@@ -148,9 +149,8 @@ class MikmakLoginClient(EventBus):
         try:
             while self._running:
                 self._run()
-
                 if not self._running:
-                    break # disconnect() was called intentionally
+                    break  # disconnect() was called intentionally
 
                 if self._switching_servers:
                     self._switching_servers = False
@@ -163,7 +163,9 @@ class MikmakLoginClient(EventBus):
 
                 if self.max_retries != 0 and self._retry_count >= self.max_retries:
                     if LoggerLevel.CONNECTION_CHANGE in self.logger_levels:
-                        print("[!] Maximum reconnection attempts reached. Stopping client.")
+                        print(
+                            "[!] Maximum reconnection attempts reached. Stopping client."
+                        )
                     break
 
                 if self.max_retries > 0:
@@ -173,7 +175,7 @@ class MikmakLoginClient(EventBus):
                         f"[!] Disconnected. Attempting to reconnect ({self._retry_count}/{self.max_retries if self.max_retries > 0 else '∞'}) in {self.reconnection_delays[0]} seconds..."
                     )
         finally:
-            self.disconnect() # ensure resources are cleaned up on any kind of exit
+            self.disconnect()  # ensure resources are cleaned up on any kind of exit
 
     def disconnect(self):
         """Stop the client and close the socket. Idempotent."""
@@ -195,12 +197,12 @@ class MikmakLoginClient(EventBus):
             if self._c._conn:
                 self._c._conn.send(message)
 
-        def xt(self, cmd: str, p: dict, x: str = "ExtManager", r: int = -1):
+        def xt(self, cmd: str, p: dict = {}, x: str = "ExtManager", r: int = -1):
             self.raw(encode.xt(cmd, p, x, r))
 
         def sys(self, action: str, body: str, r: int = 0):
             self.raw(encode.sys(action, body, r))
-    
+
     def _on_connect(self):
         if LoggerLevel.CONNECTION_CHANGE in self.logger_levels:
             ip = self.starting_ip
@@ -209,8 +211,10 @@ class MikmakLoginClient(EventBus):
             if not self._is_first_connection and self._target_server:
                 ip = self._target_server.get("ip", self.starting_ip)
                 port = int(self._target_server.get("port", self.port))
-            print(f"\n[!] Connecting to {ip}:{port}{(" - " + self._target_server.get('name', '?')) if not self._is_first_connection and self._target_server else ''}...")
-        
+            print(
+                f"\n[!] Connecting to {ip}:{port}{(" - " + self._target_server.get('name', '?')) if not self._is_first_connection and self._target_server else ''}..."
+            )
+
         if not self._is_first_connection:
             self._send.sys("verChk", "<ver v='165' />")
 
@@ -229,7 +233,7 @@ class MikmakLoginClient(EventBus):
 
         try:
             self._conn.connect(ip, port)  # can throw: refused, DNS, timeout
-            self._conn.listen()           # can throw: socket broken, KeyboardInterrupt
+            self._conn.listen()  # can throw: socket broken, KeyboardInterrupt
         except Exception as e:
             # TCP connect failed or socket broke unexpectedly — log and let the
             # while loop in connect() decide whether to retry or give up.
@@ -237,26 +241,46 @@ class MikmakLoginClient(EventBus):
             # up to connect()'s try/finally which calls disconnect().
             if LoggerLevel.INTERNAL_ERROR in self.logger_levels:
                 print(f"[!] Connection error: {e}")
-        finally:
-            self._conn.close()  # always clean up, idempotent
 
     # ── Message handler ──
     def _on_message(self, msg: str):
         if LoggerLevel.INCOMING in self.logger_levels:
             print(f"[←] {msg}")
 
-        self._handle_login_messages(msg)
-        self._handle_game_messages(msg)
-        self.emit("message", msg)
+        # Parse once: every message is either SYS (XML with action) or XT (JSON with _cmd).
+        action = None  # set for SYS messages
+        cmd = None     # set for XT messages
 
-    def _handle_login_messages(self, msg: str):
+        if msg.startswith("<"):
+            parsed = decode.xml(msg)
+            if parsed.ok:
+                body = parsed.value.find("body")
+                if body is not None:
+                    action = body.get("action")
+            else:
+                if LoggerLevel.PARSING_ERROR in self.logger_levels:
+                    print(f"[!] Failed to parse SYS message: {parsed.error}, raw message(200 truncated): {msg[:200]}")
+        elif msg.startswith("{"):
+            parsed = decode.xt(msg)
+            if parsed.ok:
+                cmd = parsed.value.get("b", {}).get("o", {}).get("_cmd")
+            else:
+                if LoggerLevel.PARSING_ERROR in self.logger_levels:
+                    print(f"[!] Failed to parse XT message: {parsed.error}, raw message(200 truncated): {msg[:200]}")
+
+        self._handle_login_messages(msg, action, cmd)
+        self._handle_game_messages(msg, action, cmd)
+        self.emit("message", msg, action, cmd)
+
+    def _handle_login_messages(self, msg: str, action: str | None, cmd: str | None):
         """Process login-flow messages across both connection phases
         (initial login server and game server after switch)."""
+
         if msg.startswith("<cross-domain-policy>"):
             if self._is_first_connection:
                 self._send.sys("verChk", "<ver v='165' />")
 
-        elif "action='apiOK'" in msg:
+        elif action == "apiOK":
             pwd = (
                 ("cluster_" + self.password)
                 if not self._is_first_connection
@@ -268,7 +292,7 @@ class MikmakLoginClient(EventBus):
                 f"<pword><![CDATA[{pwd}]]></pword></login>",
             )
 
-        elif self._is_first_connection and '"_cmd":"server_list"' in msg:
+        elif self._is_first_connection and cmd == "server_list":
             parsed = parse.server_list(msg)
             if not parsed.ok:
                 if LoggerLevel.PARSING_ERROR in self.logger_levels:
@@ -304,8 +328,8 @@ class MikmakLoginClient(EventBus):
             self.disconnect()
 
         # ── second connection phase (game server) ──
-        elif "action='rmList'" in msg:
-            self._retry_count = 0 # successful connection, reset retry count
+        elif action == "rmList":
+            self._retry_count = 0  # successful connection, reset retry count
             parsed = parse.room_list(msg, self.clean_ingame)
             if not parsed.ok:
                 if LoggerLevel.PARSING_ERROR in self.logger_levels:
@@ -314,17 +338,23 @@ class MikmakLoginClient(EventBus):
             self.ingame_state["room_list"] = parsed.value
             self.emit("room_list", parsed.value)
 
-        elif '"_cmd":"login_res"' in msg:
+        elif cmd in ("login_res", "loginRequest_res"):
             parsed = parse.login_res(msg)
             if not parsed.ok:
                 if LoggerLevel.PARSING_ERROR in self.logger_levels:
                     print(f"[!] Failed to parse login response: {parsed.error}")
                 return
             self.ingame_state["login_res"] = parsed.value
+            if parsed.value.get("res") != None:
+                print(
+                    f"[!] If res is set in the response, login failed: {parsed.value}, Disconnecting..."
+                )
+                self.disconnect()
+
             self.emit("login_res", parsed.value)
 
         # Achievements arrive early in the game-server login, before the client is fully usable.
-        elif '"_cmd":"achivment_res"' in msg:
+        elif cmd == "achivment_res":
             parsed = parse.achievement_res(msg)
             if not parsed.ok:
                 if LoggerLevel.PARSING_ERROR in self.logger_levels:
@@ -396,11 +426,8 @@ class MikmakLoginClient(EventBus):
 
             # send the last login step packet which is to join the room
             self._send.xt("avt_joinRoom", {"auto": 1})
-        
-        else:
-            pass
 
     # ── Hooks for subclasses ──
-    def _handle_game_messages(self, msg: str):
+    def _handle_game_messages(self, msg: str, action: str | None, cmd: str | None):
         """Override in subclasses (e.g. MikmakIngameClient) to handle post-login game messages."""
         pass

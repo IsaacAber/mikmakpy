@@ -20,7 +20,7 @@ dependencies = [
 requires-python = ">=3"
 
 [project.optional-dependencies]
-dev = ["pytest"]
+dev = ["pytest", "build", "twine"]
 
 [project.urls]
 Homepage = "https://github.com/IsaacAber/mikmakpy"

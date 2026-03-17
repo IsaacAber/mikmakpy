@@ -6,6 +6,7 @@ Handles the full login flow — handshake, server list, server switch, game-serv
 
 ## Install
 
+Not there yet, might be!
 ```bash
 pip install mikmakpy
 ```

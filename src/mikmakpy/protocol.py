@@ -14,7 +14,7 @@ import re
 from typing import Any, Dict, List, Optional
 import xml.etree.ElementTree as ET
 
-from .constants import Result
+from .constants import Result, KNOWN_USER_VARS
 
 
 class encode:
@@ -142,7 +142,7 @@ class parse:
         )
 
     @staticmethod
-    def room_list(msg: str, clean: bool) -> Result[List[Dict[str, Any]]]:
+    def room_list(msg: str, clean: bool = False) -> Result[List[Dict[str, Any]]]:
         """
         Parse:
           <msg><body action='rmList'><rmList><rm ...><n><![CDATA[name]]></n></rm>...</rmList></body></msg>
@@ -159,7 +159,7 @@ class parse:
           - is_game (bool)           # game == '1'
           - min_level (int|None)     # lmb (likely "level min bound")
           - max_spectators (int|None)# maxs (likely max spectators/secondary cap)
-          
+
         if clean is True, will filter out rooms with 0 users.
         """
         try:
@@ -346,3 +346,161 @@ class parse:
 
         out["achievements"] = achievements
         return Result(ok=True, value=out)
+
+    @staticmethod
+    def join_ok(msg: str, clean: bool = False) -> Result[Dict]:
+        data = decode.xml(msg)
+        if not data.ok:
+            return Result(ok=False, error=data.error)
+        data = data.value
+
+        try:
+            body = data.find("body")
+            room_id = int(body.get("r"))
+
+            room_vars_el = body.find("vars")
+            room_vars = {}
+            xml_room_var = (
+                ET.tostring(room_vars_el, encoding="unicode")
+                if room_vars_el is not None
+                else ""
+            )
+            if room_vars_el is not None:
+                for var in room_vars_el.findall("var"):
+                    n = var.get("n")
+                    t = var.get("t")
+                    raw = var.text or ""
+                    if t == "n":
+                        try:
+                            room_vars[n] = int(raw)
+                        except ValueError:
+                            room_vars[n] = raw
+                    else:
+                        room_vars[n] = raw
+
+            users = []
+            for u_el in body.findall(".//uLs/u"):
+                name_el = u_el.find("n")
+                xml_str = ET.tostring(u_el, encoding="unicode")
+
+                user = {
+                    "session_id": int(u_el.get("i")),
+                    "username": name_el.text if name_el is not None else None,
+                    "rank": 0,
+                    "days_old": None,
+                    "xml_str": xml_str,
+                    "unparsed": {},
+                }
+
+                for var in u_el.findall(".//vars/var"):
+                    n = var.get("n")
+                    t = var.get("t")
+                    raw = var.text or ""
+
+                    if n in KNOWN_USER_VARS:
+                        key, cast = KNOWN_USER_VARS[n]
+                        user[key] = cast(raw)
+                    else:
+                        user["unparsed"][n] = {"type": t, "value": raw}
+
+                users.append(user)
+
+            return Result(
+                ok=True,
+                value={
+                    "room_id": room_id,
+                    "room_vars": room_vars,
+                    "xml_room_vars": xml_room_var,
+                    "users": users,
+                },
+            )
+        except Exception as e:
+            return Result(ok=False, error=f"join_ok: XML structure unexpected: {e}")
+
+    @staticmethod
+    def u_vars_update(msg: str) -> Result[Dict[str, Any]]:
+        data = decode.xml(msg)
+        if not data.ok:
+            return Result(ok=False, error=data.error)
+        data = data.value
+
+        try:
+            body = data.find("body")
+            user_el = body.find("user")
+            user_id = int(user_el.get("id"))
+
+            updated = {}
+            unparsed = {}
+            for var in body.findall(".//vars/var"):
+                n = var.get("n")
+                t = var.get("t")
+                raw = var.text or ""
+
+                if n in KNOWN_USER_VARS:
+                    key, cast = KNOWN_USER_VARS[n]
+                    updated[key] = cast(raw)
+                else:
+                    unparsed[n] = {"type": t, "value": raw}
+
+            return Result(
+                ok=True,
+                value={
+                    "session_id": user_id,
+                    "updated": updated,
+                    "unparsed": unparsed,
+                },
+            )
+        except Exception as e:
+            return Result(ok=False, error=f"u_vars_update: XML structure unexpected: {e}")
+
+    @staticmethod
+    def u_enter_room(msg: str) -> Result[Dict[str, Any]]:
+        data = decode.xml(msg)
+        if not data.ok:
+            return Result(ok=False, error=data.error)
+        data = data.value
+
+        try:
+            body = data.find("body")
+            u_el = body.find("u")
+            name_el = u_el.find("n")
+
+            user = {
+                "session_id": int(u_el.get("i")),
+                "username": name_el.text if name_el is not None else None,
+                "rank": 0,
+                "days_old": None,
+                "unparsed": {},
+            }
+
+            for var in u_el.findall(".//vars/var"):
+                n = var.get("n")
+                t = var.get("t")
+                raw = var.text or ""
+
+                if n in KNOWN_USER_VARS:
+                    key, cast = KNOWN_USER_VARS[n]
+                    user[key] = cast(raw)
+                else:
+                    user["unparsed"][n] = {"type": t, "value": raw}
+
+            return Result(ok=True, value=user)
+        except Exception as e:
+            return Result(ok=False, error=f"u_enter_room: XML structure unexpected: {e}")
+
+    @staticmethod
+    def user_gone(msg: str) -> Result[Dict[str, Any]]:
+        data = decode.xml(msg)
+        if not data.ok:
+            return Result(ok=False, error=data.error)
+        data = data.value
+
+        try:
+            body = data.find("body")
+            user_el = body.find("user")
+            session_id = int(user_el.get("id"))
+
+            return Result(ok=True, value={"session_id": session_id})
+        except Exception as e:
+            return Result(ok=False, error=f"user_gone: XML structure unexpected: {e}")
+

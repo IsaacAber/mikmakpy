@@ -95,3 +95,59 @@ def test_parse_achievement_res():
     # Update list should be shorter than full snapshot
     assert len(dataB["achievements"]) < len(dataA["achievements"])
 
+def test_parse_join_ok():
+    msg = r"""<msg t='sys'><body action='joinOK' r='12'><pid id='0'/><vars /><uLs r='12'><u i='92948' m='0'><n><![CDATA[סינוןפח]]></n><vars><var n='d' t='n'><![CDATA[3]]></var><var n='e' t='s'><![CDATA[201,0,14389,0,5983,0,45120,33090,0,0,0,0,0,0]]></var><var n='i' t='n'><![CDATA[16359409]]></var><var n='m' t='n'><![CDATA[0]]></var></vars></u></uLs></body></msg>"""
+
+    res = parse.join_ok(msg)
+    assert res.ok, f"Error parsing joinOK message: {res.error}"
+    assert res.value["room_id"] == 12
+    assert res.value["users"][0]["session_id"] == 92948
+    assert res.value["users"][0]["username"] == "סינוןפח"
+    assert res.value["users"][0]["days_old"] == 3
+    assert isinstance(res.value["users"][0]["equipment"], list)
+    assert res.value["users"][0]["equipment"] == [201, 0, 14389, 0, 5983, 0, 45120, 33090, 0, 0, 0, 0, 0, 0]
+    assert res.value["users"][0]["user_id"] == 16359409
+    assert res.value["users"][0]["rank"] == 0
+    assert len(res.value["room_vars"]) == 0, f"Expected no room vars, got: {res.value['room_vars']}"
+
+def test_parse_join_ok_with_room_vars():
+    msg = r"""<msg t='sys'><body action='joinOK' r='4'><pid id='0'/><vars><var n='YprT' t='s'><![CDATA[מחר כולם יהיו מלאכים ב -]]></var><var n='YprVotes2' t='s'><![CDATA[6]]></var><var n='YprVotes1' t='s'><![CDATA[5]]></var><var n='YprOpt1' t='s'><![CDATA[במיקפה]]></var><var n='YprOpt2' t='s'><![CDATA[פארק הוותיק]]></var></vars><uLs r='4'><u i='92948' m='0'><n><![CDATA[סינוןפח]]></n><vars><var n='d' t='n'><![CDATA[3]]></var><var n='e' t='s'><![CDATA[201,0,14389,0,5983,0,45120,33090,0,0,0,0,0,0]]></var><var n='i' t='n'><![CDATA[16359409]]></var><var n='m' t='n'><![CDATA[0]]></var></vars></u></uLs></body></msg>"""
+
+    res = parse.join_ok(msg)
+    assert res.ok, f"Error parsing joinOK message: {res.error}"
+    assert res.value["room_id"] == 4
+    assert res.value["room_vars"]["YprT"] == "מחר כולם יהיו מלאכים ב -"
+    assert res.value["room_vars"]["YprVotes2"] == "6"
+    assert res.value["room_vars"]["YprVotes1"] == "5"
+    assert res.value["room_vars"]["YprOpt1"] == "במיקפה"
+    assert res.value["room_vars"]["YprOpt2"] == "פארק הוותיק"
+    assert len(res.value["users"]) == 1
+    msg = r"""<msg t='sys'><body action='uVarsUpdate' r='12'><vars><var n='x' t='s'><![CDATA[910,529]]></var></vars><user id='92557' /></body></msg>"""
+
+    res = parse.u_vars_update(msg)
+    assert res.ok, f"Error parsing uVarsUpdate message: {res.error}"
+    assert res.value["session_id"] == 92557
+    assert res.value["updated"]["position"] == (910, 529)
+    assert res.value["unparsed"] == {}
+
+def test_parse_u_enter_room():
+    msg = r"""<msg t='sys'><body action='uER' r='12'><u i ='92968' m='0'><n><![CDATA[עדן3C]]></n><vars><var n='d' t='n'><![CDATA[865]]></var><var n='t' t='n'><![CDATA[17]]></var><var n='e' t='s'><![CDATA[205,21152,1244,0,2493,0,0,0,0,0,6367,0,0,43022]]></var><var n='g' t='n'><![CDATA[1]]></var><var n='i' t='n'><![CDATA[15586722]]></var><var n='l' t='n'><![CDATA[11]]></var><var n='m' t='n'><![CDATA[111]]></var></vars></u></body></msg>"""
+
+    res = parse.u_enter_room(msg)
+    assert res.ok, f"Error parsing uER message: {res.error}"
+    assert res.value["session_id"] == 92968
+    assert res.value["username"] == "עדן3C"
+    assert res.value["days_old"] == 865
+    assert res.value["rank"] == 11
+    assert res.value["user_id"] == 15586722
+    assert res.value["equipment"] == [205, 21152, 1244, 0, 2493, 0, 0, 0, 0, 0, 6367, 0, 0, 43022]
+    assert "t" in res.value["unparsed"]
+    assert "g" in res.value["unparsed"]
+    assert "m" in res.value["unparsed"]
+
+def test_parse_user_gone():
+    msg = r"""<msg t='sys'><body action='userGone' r='12'><user id='92963' /></body></msg>"""
+
+    res = parse.user_gone(msg)
+    assert res.ok, f"Error parsing userGone message: {res.error}"
+    assert res.value["session_id"] == 92963
