@@ -6,13 +6,14 @@ receive loop that splits null-terminated messages and dispatches them
 via callbacks. Used internally by MikmakLoginClient.
 """
 
+from collections.abc import Callable
 from socket import socket, AF_INET, SOCK_STREAM, IPPROTO_TCP
 import traceback
 from .protocol import encode, decode
 
 
 class Connection:
-    def __init__(self, on_message: callable, on_connect: callable | None = None):
+    def __init__(self, on_message: Callable, on_connect: Callable | None = None):
         self._on_message = on_message
         self._on_connect = on_connect
         self._sock: socket | None = None
