@@ -22,7 +22,7 @@ class MikmakLoginClient(EventBus):
         self,
         username: str,
         password: str,
-        logger_levels: set[LoggerLevel] = set(),
+        logger_levels: set[LoggerLevel] = set("action_warning"),
         mac_address: str = ":".join(
             f"{(get_mac() >> i) & 0xff:02x}" for i in range(40, -1, -8)
         ),
@@ -125,6 +125,7 @@ class MikmakLoginClient(EventBus):
             "user_id": None,
             "rank": None,
             "xp": None,
+            "coins": None,
             "safe_chat": None,
             "server_list": None,
             "room_list": None,
@@ -345,6 +346,8 @@ class MikmakLoginClient(EventBus):
                     print(f"[!] Failed to parse login response: {parsed.error}")
                 return
             self.ingame_state["login_res"] = parsed.value
+            self.ingame_state["coins"] = parsed.value.get("c")
+
             if parsed.value.get("res") != None:
                 print(
                     f"[!] If res is set in the response, login failed: {parsed.value}, Disconnecting..."

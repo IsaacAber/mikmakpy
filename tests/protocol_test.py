@@ -122,6 +122,8 @@ def test_parse_join_ok_with_room_vars():
     assert res.value["room_vars"]["YprOpt1"] == "במיקפה"
     assert res.value["room_vars"]["YprOpt2"] == "פארק הוותיק"
     assert len(res.value["users"]) == 1
+
+def test_parse_u_vars_update():
     msg = r"""<msg t='sys'><body action='uVarsUpdate' r='12'><vars><var n='x' t='s'><![CDATA[910,529]]></var></vars><user id='92557' /></body></msg>"""
 
     res = parse.u_vars_update(msg)

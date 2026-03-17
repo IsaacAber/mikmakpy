@@ -1,4 +1,5 @@
 from mikmakpy.ingame import MikmakIngameClient
+from mikmakpy.login import MikmakLoginClient
 from mikmakpy.constants import LoggerLevel, Server
 
 from dotenv import load_dotenv
@@ -16,8 +17,8 @@ load_dotenv()
 #         logger_levels.add(loggingOption)
 
 #     client = MikmakLoginClient(
-#         username=getenv("USERNAME", ""),
-#         password=getenv("PASSWORD", ""),
+#         username=getenv("USERNAME"),
+#         password=getenv("PASSWORD"),
 #         logger_levels=logger_levels,
 #         mac_address="00:11:22:33:44:55",  # Use a fixed MAC address for testing to ensure consistent username derivation
 #         server_to_join=None,
@@ -43,8 +44,8 @@ load_dotenv()
 #         logger_levels.add(loggingOption)
 
 #     client = MikmakLoginClient(
-#         username=getenv("USERNAME", ""),
-#         password=getenv("PASSWORD", ""),
+#         username=getenv("USERNAME"),
+#         password=getenv("PASSWORD"),
 #         logger_levels=logger_levels,
 #         mac_address="00:11:22:33:44:55",  # Use a fixed MAC address for testing to ensure consistent username derivation
 #         server_to_join=Server.KIWI,
@@ -56,7 +57,6 @@ load_dotenv()
 #             print("Successfully joined the game server, login test to end successful!")
 #             print("Ingame state:", client.ingame_state)
 #             client.disconnect()
-    
 
 #     client.connect()
 
@@ -70,8 +70,8 @@ load_dotenv()
 #         logger_levels = set(LoggerLevel)
 
 #         client = MikmakLoginClient(
-#             username=getenv("USERNAME", ""),
-#             password=getenv("PASSWORD", ""),
+#             username=getenv("USERNAME"),
+#             password=getenv("PASSWORD"),
 #             logger_levels=logger_levels,
 #             mac_address="00:11:22:33:44:55",
 #             server_to_join=Server.KIWI,
@@ -82,27 +82,34 @@ load_dotenv()
 #             nonlocal successful_logins
 
 #             if "action='joinOK'" in msg:
-#                 print("Successfully joined the game server, login test to end successful!")
+#                 print(
+#                     "Successfully joined the game server, login test to end successful!"
+#                 )
 #                 successful_logins += 1
 #                 print(f"Successful logins so far: {successful_logins}")
 #                 client.disconnect()
-#                 sleep(1)  # Sleep for a short time to avoid hitting the server too rapidly
+#                 sleep(
+#                     1
+#                 )  # Sleep for a short time to avoid hitting the server too rapidly
 
 #         client.connect()
+
 
 def test_ingame_client():
     """This test checks that the MikmakIngameClient can be instantiated and that
     the _handle_game_messages method can be called without errors.
     """
     client = MikmakIngameClient(
-        username=getenv("USERNAME", ""),
-        password=getenv("PASSWORD", ""),
+        username=getenv("USERNAME"),
+        password=getenv("PASSWORD"),
         logger_levels=set(LoggerLevel),
         mac_address="00:11:22:33:44:55",
         server_to_join=Server.KIWI,
     )
 
     Timer(120, lambda: client.disconnect()).start()
-    print("Connecting with MikmakIngameClient, it should auto disconnect after 10 seconds...")
+    print(
+        "Connecting with MikmakIngameClient, it should auto disconnect after 120 seconds..."
+    )
 
     client.connect()

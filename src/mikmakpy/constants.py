@@ -37,6 +37,8 @@ class LoggerLevel(StrEnum):
     OUTGOING = "outgoing"
     PARSING_ERROR = "parsing_error"
     INTERNAL_ERROR = "internal_error"
+    ACTION_WARNING = "action_warning"
+    SERVER_DENY = "server_deny"
 
 
 class EmoteFace(IntEnum):
