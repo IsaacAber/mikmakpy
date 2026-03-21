@@ -9,7 +9,6 @@ Built on top of EventBus so callers can hook into events like 'server_list' or '
 from time import sleep
 from hashlib import md5
 from uuid import getnode as get_mac
-from traceback import print_stack
 
 from .events import EventBus
 from .constants import Server, LoggerLevel

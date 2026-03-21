@@ -16,6 +16,7 @@ FOLLOW_DISTANCE = 64
 
 load_dotenv()
 
+# If you are using windows, don't use .env file, instead set username and password directly in the code since windows doesn't support environment variables in the same way as unix systems?
 client = MikmakIngameClient(
     username=getenv("USERNAME"),
     password=getenv("PASSWORD"),

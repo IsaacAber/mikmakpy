@@ -132,7 +132,9 @@ class MikmakIngameClient(MikmakLoginClient):
                         print(f"[!] warp: unknown room name '{room}'")
                     return
                 room_name = room
-            rk = md5((room_name + "null").encode()).hexdigest() # mikmak has to explain why this is the correct way to generate the rk parameter for warping to a room, but this is what it does it L: so be it.
+            rk = md5(
+                (room_name + "null").encode()
+            ).hexdigest()  # mikmak has to explain why this is the correct way to generate the rk parameter for warping to a room, but this is what it does it L: so be it.
             p = {"rk": rk, "name": room_name}
             self._c._send.xt(
                 "avt_joinRoom",
@@ -239,7 +241,7 @@ class MikmakIngameClient(MikmakLoginClient):
 
             self.emit("user_leave", session_id, left_user)
 
-        if cmd == "msg_e":
+        elif cmd == "msg_e":
             data = decode.xt(msg)
             if not data.ok:
                 if LoggerLevel.PARSING_ERROR in self.logger_levels:
@@ -256,3 +258,14 @@ class MikmakIngameClient(MikmakLoginClient):
                 return
             o = data.value.get("b", {}).get("o", {})
             self.emit("user_chat_unsafe", o.get("sender"), o.get("msg"))
+
+        elif action == "dmnMsg":
+            parsed = parse.dmn_msg(msg)
+            if not parsed.ok:
+                if LoggerLevel.PARSING_ERROR in self.logger_levels:
+                    print(f"Failed to parse dmnMsg message: {parsed.error}")
+                return
+            # Always print a warning with the full packet
+            if LoggerLevel.SERVER_DENY in self.logger_levels:
+                print(f"[DENY] dmnMsg received: {msg}")
+            self.emit("dmn_msg", parsed.value)

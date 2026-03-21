@@ -153,3 +153,10 @@ def test_parse_user_gone():
     res = parse.user_gone(msg)
     assert res.ok, f"Error parsing userGone message: {res.error}"
     assert res.value["session_id"] == 92963
+
+def test_parse_dmn_msg():
+    msg = """<msg t='sys'>\n    <body action='dmnMsg' r='0'>\n        <user id='108431' />\n        <txt><![CDATA[invalid_action]]></txt>\n    </body>\n</msg>"""
+    res = parse.dmn_msg(msg)
+    assert res.ok, f"Error parsing dmnMsg: {res.error}"
+    assert res.value["session_id"] == 108431
+    assert res.value["text"] == "invalid_action"

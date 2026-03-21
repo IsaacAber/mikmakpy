@@ -451,7 +451,9 @@ class parse:
                 },
             )
         except Exception as e:
-            return Result(ok=False, error=f"u_vars_update: XML structure unexpected: {e}")
+            return Result(
+                ok=False, error=f"u_vars_update: XML structure unexpected: {e}"
+            )
 
     @staticmethod
     def u_enter_room(msg: str) -> Result[Dict[str, Any]]:
@@ -486,7 +488,9 @@ class parse:
 
             return Result(ok=True, value=user)
         except Exception as e:
-            return Result(ok=False, error=f"u_enter_room: XML structure unexpected: {e}")
+            return Result(
+                ok=False, error=f"u_enter_room: XML structure unexpected: {e}"
+            )
 
     @staticmethod
     def user_gone(msg: str) -> Result[Dict[str, Any]]:
@@ -504,3 +508,22 @@ class parse:
         except Exception as e:
             return Result(ok=False, error=f"user_gone: XML structure unexpected: {e}")
 
+    @staticmethod
+    def dmn_msg(msg: str) -> Result[dict]:
+        """
+        Parse a dmnMsg sys XML message. Returns dict with keys:
+            - session_id: int (user id)
+            - text: str (message text)
+        """
+        data = decode.xml(msg)
+        if not data.ok:
+            return Result(ok=False, error=data.error)
+        data = data.value
+        try:
+            body = data.find("body")
+            user_el = body.find("user")
+            session_id = int(user_el.get("id"))
+            text = body.findtext("txt") or ""
+            return Result(ok=True, value={"session_id": session_id, "text": text})
+        except Exception as e:
+            return Result(ok=False, error=f"dmn_msg: XML structure unexpected: {e}")
