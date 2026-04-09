@@ -21,7 +21,7 @@ class MikmakLoginClient(EventBus):
         self,
         username: str,
         password: str,
-        logger_levels: set[LoggerLevel] = set("action_warning"),
+        logger_levels: set[LoggerLevel] = {LoggerLevel.ACTION_WARNING, LoggerLevel.SERVER_DENY},
         mac_address: str = ":".join(
             f"{(get_mac() >> i) & 0xff:02x}" for i in range(40, -1, -8)
         ),
@@ -130,6 +130,7 @@ class MikmakLoginClient(EventBus):
             "room_list": None,
             "login_res": None,
             "achievements": None,
+            "inventory": None,
         }
 
         # ── nested namespaces ──────────────────────────────────────────────
@@ -427,7 +428,18 @@ class MikmakLoginClient(EventBus):
             self.emit("achievement_res", incoming_ach, is_update)
 
             # send the last login step packet which is to join the room
-            self._send.xt("avt_joinRoom", {"auto": 1})
+            if not is_update:
+                self._send.xt("avt_joinRoom", {"auto": 1})
+
+        elif action == "inv_list":
+            parsed = parse.inv_list(msg)
+            if not parsed.ok:
+                if LoggerLevel.PARSING_ERROR in self.logger_levels:
+                    print(f"[!] Failed to parse inventory list: {parsed.error}")
+                return
+
+            self.ingame_state["inventory"] = parsed.value
+            self.emit("inventory_list", parsed.value)
 
     # ── Hooks for subclasses ──
     def _handle_game_messages(self, msg: str, action: str | None, cmd: str | None):

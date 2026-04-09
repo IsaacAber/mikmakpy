@@ -8,7 +8,7 @@ from os import getenv
 import math
 
 from mikmakpy.ingame import MikmakIngameClient
-from mikmakpy.constants import LoggerLevel, Server
+from mikmakpy.constants import LoggerLevel, Server, ROOM_NAMES
 
 SCREEN_W = 1200
 SCREEN_H = 800
@@ -21,7 +21,7 @@ client = MikmakIngameClient(
     username=getenv("USERNAME"),
     password=getenv("PASSWORD"),
     server_to_join=Server.KIWI,
-    logger_levels={LoggerLevel.CONNECTION_CHANGE, LoggerLevel.ACTION_WARNING},
+    logger_levels={LoggerLevel.ACTION_WARNING, LoggerLevel.CONNECTION_CHANGE},
 )
 
 following: dict[str, int] = {}  # sender name -> session_id
@@ -30,7 +30,10 @@ following: dict[str, int] = {}  # sender name -> session_id
 @client.on("room_join")
 def on_join(data):
     following.clear()
-    print(f"Joined room {data['room_id']} with {len(data['users'])} users")
+    print(
+        f"Joined room {ROOM_NAMES.get(data['room_id'], data['room_id'])} with {len(data['users'])} users"
+    )
+    print("Global rooms state:", client.ingame_state["room_list"])
 
 
 @client.on("user_chat_unsafe")
@@ -43,7 +46,7 @@ def on_chat(sender, text):
             move_toward(user)
 
     if text.startswith("בוא"):
-        destination = text[len("בוא"):].strip()
+        destination = text[len("בוא") :].strip()
         print(f"Received warp command to {destination} from {sender}")
         if destination == "עיר":
             client.action.warp("city")

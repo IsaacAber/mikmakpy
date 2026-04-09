@@ -11,12 +11,12 @@ class EventBus:
     def __init__(self):
         self._handlers = {}
 
-    def on(self, event: str):
-        def decorator(fn):
+    def on(self, event: str) -> callable:
+        def deco(fn: callable) -> callable:
             self._handlers.setdefault(event, []).append(fn)
             return fn
 
-        return decorator
+        return deco
 
     def emit(self, event: str, *args, **kwargs):
         for fn in self._handlers.get(event, []):

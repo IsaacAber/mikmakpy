@@ -29,7 +29,7 @@ class MikmakIngameClient(MikmakLoginClient):
         self,
         username: str,
         password: str,
-        logger_levels: set[LoggerLevel] = set("action_warning"),
+        logger_levels: set[LoggerLevel] = {LoggerLevel.ACTION_WARNING, LoggerLevel.SERVER_DENY},
         mac_address: str = ":".join(
             f"{(get_mac() >> i) & 0xff:02x}" for i in range(40, -1, -8)
         ),
@@ -53,13 +53,16 @@ class MikmakIngameClient(MikmakLoginClient):
             port,
         )
 
+        # more connection state only accessed by the library, not the user
+        self._hasSentReadyAfterJoin = True
+
         self.ingame_state.update(
             {
                 "room_id": None,
                 "room_vars": None,
                 "users": None,
                 "session_id": None,
-                "hasSentReadyAfterJoin": True,
+                "miktok": None,
             }
         )
 
@@ -177,7 +180,7 @@ class MikmakIngameClient(MikmakLoginClient):
                 },
                 r=self.ingame_state["room_id"],
             )
-            self.ingame_state["hasSentReadyAfterJoin"] = False
+            self._hasSentReadyAfterJoin = False
 
             self.emit("room_join", parsed.value)
 
@@ -196,16 +199,28 @@ class MikmakIngameClient(MikmakLoginClient):
                         user["unparsed"].update(parsed.value["unparsed"])
 
                         if (
-                            not self.ingame_state["hasSentReadyAfterJoin"]
+                            not self._hasSentReadyAfterJoin
                             and user["session_id"] == self.ingame_state["session_id"]
                         ):
                             self._send.xt(
                                 "f_ready",
                                 r=self.ingame_state["room_id"],
                             )
-                            self.ingame_state["hasSentReadyAfterJoin"] = True
+                            self._hasSentReadyAfterJoin = True
 
             self.emit("user_update", parsed.value)
+
+        elif cmd == "m_ui":
+            parsed = parse.m_ui(msg)
+            if not parsed.ok:
+                if LoggerLevel.PARSING_ERROR in self.logger_levels:
+                    print(f"Failed to parse m_ui message: {parsed.error}")
+                return
+            
+            self.ingame_state["miktok"] = parsed.value.get("o", None)
+    
+            self.emit("miktok_init", parsed.value)
+
 
         elif action == "uER":
             parsed = parse.u_enter_room(msg)

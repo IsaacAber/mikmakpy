@@ -45,53 +45,63 @@ class EmoteFace(IntEnum):
     """Emote IDs (1000 series) - character expressions/animations."""
 
     # Row 1 (left to right)
-    BLUSH_KISS = 1005  # Blushing with kiss mark
+    BLUSH_SMILE = 1005  # Blushing with smile
     COOL = 1006  # Sunglasses cool
-    IN_LOVE = 1010  # Heart eyes loving
-    WINK = 1011  # Winking
-    SUSPICIOUS = 1012  # Skeptical/suspicious look
+    DEPRESSED = 1010  # Sad looking down depressed
+    CRY = 1011  # Crying
+    EVIL_SMILE = 1012  # Evil smile
     ANGRY = 1013  # Angry red face
-    HEARTBREAK = 1014  # Broken heart crying
-    SICK = 1015  # Green sick face
-    PLEADING = 1017  # Pleading/puppy eyes
+    SICK = 1014  # Green sick face
+    PARTY = 1015  # Party face with a party hat and blower
+    QUESTINING = (
+        1017  # Questioning with raised eyebrow and question marks above the head
+    )
     # Row 2 (left to right)
-    PARTY = 1001  # Party celebration
-    HEARTS_FLOAT = 1002  # Hearts floating around
-    HEARTS_EYES = 1003  # Heart eyes excited
-    LOVE = 1007  # Red heart eyes love
-    SHOCKED = 1008  # Surprised/shocked
-    THINKING = 1009  # Confused/thinking
+    LOVE_CIRCLE = 1001  # Love face with a circle of hearts around the head
+    SMILE = 1002  # Normal smile without teeth
+    GRIN = 1003  # Grinning with teeth
+    LOVE = 1007  # Love face with three hearts floating above the head and toungue sticking out
+    SLEEPY = 1008  # Sleeping
+    SHOCKED = 1009  # Shocked/surprised
     ANGEL = 1004  # Angel with halo
-    SLEEPY = 1016  # Sleepy with zzz
-    SLEEPING = 1018  # Sleeping
+    SLEEPING = 1016  # Sleeping with Zzz above the head
+    WINK = 1018  # Winking with a closed smile
+
+    # who did this is such a weirdo!
 
 
 class Dance(IntEnum):
     """Dance IDs (2000 series) - character dance/movement animations."""
 
-    # Row 1 (top, left to right)
-    CHEER = 2030  # Arms out with sparkles
-    WAVE = 2001  # Waving
-    WIGGLE = 2002  # Arms wiggling
-    WALK = 2013  # Walking motion
-    SHRINK = 2014  # Shrinking inward
-    SPIN = 2017  # Spinning around
+    # Row 1 (top, left to right) Starting from the mikbits dance!
+    MIKBIT_DANCE_1 = 2068  # Can't remember the name of the dance, feel free to rename it if you know it!
+    MIKBIT_DANCE_2 = 2070  # Again, we do we have a gap? like the ID between 2068 and 2072 exist, but why they can't put them in some logical order? (not zigzag or inline or anything I can think of)
+    MIKBIT_DANCE_3 = 2071
+    OOPA_GANGAM_STYLE = 2030
+    PYRAMID_LEVEL_UP = 2001
+    KALINKA = 2002
+    HEAD_NODDING = 2013  # Again, what about this gap? (They have crazy streak in breaking consistency with their dance/emote/ETC IDs)
+    JUMP_AND_RAISE_LEFT_HAND = 2014
+    JUMP_AND_ROTATE_360 = 2017  # It's a pain to write them one after another AI isn't that good, he has an observation of a kid in the age of 3 years old.
     # Row 2 (bottom, left to right)
-    JUMP = 2057  # Jumping (legs still)
-    ARMS = 2003  # Arms moving (body still)
-    HEAD = 2004  # Head moving (body still)
-    FLIP = 2015  # Upside down flip
-    HANDSTAND = 2016  # Handstand with hearts
-    POINT = 2026  # Pointing (body still)
-    # Sit directions (clockwise from left)
-    SIT_L = 2008  # Sit facing left
-    SIT_UL = 2005  # Sit facing up-left
-    SIT_U = 2006  # Sit facing up
-    SIT_UR = 2007  # Sit facing up-right
-    SIT_R = 2009  # Sit facing right
-    SIT_DR = 2012  # Sit facing down-right
-    SIT_D = 2011  # Sit facing down
-    SIT_DL = 2010  # Sit facing down-left
+    MIKBIT_DANCE_4 = 2073
+    MIKBIT_ZOMBIE_5 = 2069
+    MIKBIT_DANCE_6 = 2072
+    NOT_SURE_PLUS_360_ROTATE_IN_THE_END = 2057
+    FLOSS = 2003
+    WAVE = 2004
+    SPINING_ON_THE_HEAD_INFINITY = 2015
+    KALINKA_PLUS_FLOSS = 2016
+    SHY_UWU = 2026
+    # Sitting directions (Clockwise from the top)
+    SIT_UP = 2006
+    SIT_UP_RIGHT = 2007
+    SIT_RIGHT = 2009
+    SIT_DOWN_RIGHT = 2012
+    SIT_DOWN = 2011
+    SIT_DOWN_LEFT = 2010
+    SIT_LEFT = 2008
+    SIT_UP_LEFT = 2005
 
 
 class SafeChat(IntEnum):
@@ -283,53 +293,53 @@ class SafeChat(IntEnum):
 class SafeChatEmoji(IntEnum):
     """Emoji IDs (3000 series) - yellow smiley faces shown in chat bubble."""
 
-    # Row 1 - Basic expressions
+    # Row 1
     SMILE = 3001
-    LAUGH = 3002
-    SAD = 3003
-    CONFUSED = 3004
+    LAUGH_TEETH_OUT = 3002
+    UPSET_WITH_RAISED_EYEBROW = 3003
+    SAD_LOOKING_DOWN = 3004
     WINK = 3005
-    COOL = 3006
-    TONGUE = 3007
-    SURPRISED = 3008
-    CRY = 3009
-    SLEEPY = 3010
-    KISS = 3011
-    NERVOUS = 3012
-    DIZZY = 3013
-    NERD = 3014
-    SLEEPING = 3015
-    HEHE = 3016
-    SILENT = 3017
-    SICK = 3018
-    THINKING = 3019
-    ANGRY = 3020
-    # Row 2 - Special expressions and objects
-    DEVIL = 3021
-    ANGEL_EVIL = 3022
-    LOVE_EYES = 3023
-    BORING = 3024
-    IN_LOVE = 3025
-    ANGEL = 3026
-    COFFEE = 3027
-    LATTE = 3028
-    PIZZA = 3029
-    SUN = 3030
-    PARTY = 3031
-    CAKE = 3032
-    HEART = 3033
-    THUMBS_UP = 3034
-    PEACE = 3035
-    TAXI = 3036
-    ADMIN = 3039
-    MIKTOK = 3040
-
+    SHOCKED = 3006
+    KISS = 3007
+    SUPRISED = 3008
+    FLUSHED_SMILE = 3009
+    GRIMACING = 3010
+    MAD_YELLOW = 3011
+    RAISED_EYEBROW = 3012
+    CLOSE_MOUTH_SMILING_EYES = 3013
+    OPEN_MOUTH_SMILING_EYES = 3014
+    NERD = 3015
+    COOL_SUNGLASSES = 3016
+    SMILE_TOUNGUE_OUT = 3017
+    SMILING_EYES_TOUNGUE_OUT = 3018
+    NERVE_PHEW_SMILE = 3019
+    ADMIN_RANK_EMOJI = 3039
+    # Row 2
+    MAD_RED = 3020
+    EVIL_SMILE = 3021
+    NAUSEATED_GREEN = 3022
+    SHOCKED_EYEBROW_RAISED = 3023
+    SATISFIED_BLUSHED_SMILE = 3024
+    HEARTS_IN_EYES = 3025
+    SMILE_UPSIDE_DOWN = 3026
+    SOBBING = 3027
+    ANGEL = 3028
+    RELIGIOUS_MAN = 3029
+    COFFEE = 3030
+    PIZZA_SLICE = 3031
+    SUN = 3032
+    CONFFETTI_CONE = 3033
+    PARTY_CAKE = 3034
+    HEART = 3035
+    THUMBS_UP = 3036
+    TAXI = 3037
+    HANDS_UP = 3038
+    MIKTOK_EMOJI = 3040
+    
 
 class MiktokSafeChat(IntEnum):
     """Miktok safe chat message IDs - predefined emojies and messages (Hebrew)."""
-
-    # Not fully mapped yet.
-    SMILE = 100
+    # Ain't no way I'm iterating each of them and writing them down, there is more then 100+ of them!
 
 
 ROOM_IDS: dict[str, int] = {

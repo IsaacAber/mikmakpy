@@ -6,7 +6,6 @@ __pycache__/
 dist/
 build/
 *.egg-info/
-inspection.xml
-inspection.json
-src/tools/packet.html
 creds.json
+src/tools/*
+!src/tools/sniffer.py

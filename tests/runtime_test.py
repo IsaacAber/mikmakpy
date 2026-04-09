@@ -103,7 +103,6 @@ def test_ingame_client():
         username=getenv("USERNAME"),
         password=getenv("PASSWORD"),
         logger_levels=set(LoggerLevel),
-        mac_address="00:11:22:33:44:55",
         server_to_join=Server.KIWI,
     )
 
@@ -113,3 +112,4 @@ def test_ingame_client():
     )
 
     client.connect()
+ 

@@ -13,6 +13,8 @@ from json import dumps, loads
 import re
 from typing import Any, Dict, List, Optional
 import xml.etree.ElementTree as ET
+import zlib
+import base64
 
 from .constants import Result, KNOWN_USER_VARS
 
@@ -348,6 +350,52 @@ class parse:
         return Result(ok=True, value=out)
 
     @staticmethod
+    def inv_list(msg: str) -> Result[List[str]]:
+        data = decode.xt(msg)
+        if not data.ok:
+            return Result(ok=False, error=data.error)
+
+        list_field = data.value.get("b", {}).get("o", {}).get("list")
+        enc = data.value.get("b", {}).get("o", {}).get("enc")
+
+        if not isinstance(list_field, str) and not isinstance(enc, str):
+            return Result(ok=False, error="inv_list: invalid 'b.o.enc' or 'b.o.list'")
+
+        if isinstance(list_field, str):
+            items = list_field.split(",")
+        else:
+            dec = zlib.decompress(base64.b64decode(enc))
+            items = dec.decode().strip(",").split(",")
+
+        return Result(ok=True, value=items)
+
+    @staticmethod
+    def m_ui(msg: str) -> Result[dict]:
+        data = decode.xt(msg)
+        if not data.ok:
+            return Result(ok=False, error=data.error)
+
+        o = data.value.get("b", {}).get("o", {})
+        if not isinstance(o, dict):
+            return Result(ok=False, error="m_ui: invalid 'b.o'")
+        
+        was_encoded = "enc" in o
+        if was_encoded:
+
+            enc = o["enc"]
+            try:
+                dec = zlib.decompress(base64.b64decode(enc))
+                o = decode.xt(dec.decode())
+                if not o.ok:
+                    return Result(ok=False, error=f"m_ui: inner JSON parse failed: {o.error}")
+                o = o.value
+            except Exception as e:
+                return Result(ok=False, error=f"m_ui: decompression failed: {e}")
+
+        # we instead need to scaffold the data into a more usable format, but for now just return the raw dict TODO: scaffold it. keeping it to when I'll work on the miktok protocol parts...
+        return Result(ok=True, value={"o": o, "was_encoded": was_encoded})
+
+    @staticmethod
     def join_ok(msg: str, clean: bool = False) -> Result[Dict]:
         data = decode.xml(msg)
         if not data.ok:
@@ -418,6 +466,43 @@ class parse:
             return Result(ok=False, error=f"join_ok: XML structure unexpected: {e}")
 
     @staticmethod
+    def u_enter_room(msg: str) -> Result[Dict[str, Any]]:
+        data = decode.xml(msg)
+        if not data.ok:
+            return Result(ok=False, error=data.error)
+        data = data.value
+
+        try:
+            body = data.find("body")
+            u_el = body.find("u")
+            name_el = u_el.find("n")
+
+            user = {
+                "session_id": int(u_el.get("i")),
+                "username": name_el.text if name_el is not None else None,
+                "rank": 0,
+                "days_old": None,
+                "unparsed": {},
+            }
+
+            for var in u_el.findall(".//vars/var"):
+                n = var.get("n")
+                t = var.get("t")
+                raw = var.text or ""
+
+                if n in KNOWN_USER_VARS:
+                    key, cast = KNOWN_USER_VARS[n]
+                    user[key] = cast(raw)
+                else:
+                    user["unparsed"][n] = {"type": t, "value": raw}
+
+            return Result(ok=True, value=user)
+        except Exception as e:
+            return Result(
+                ok=False, error=f"u_enter_room: XML structure unexpected: {e}"
+            )
+
+    @staticmethod
     def u_vars_update(msg: str) -> Result[Dict[str, Any]]:
         data = decode.xml(msg)
         if not data.ok:
@@ -453,43 +538,6 @@ class parse:
         except Exception as e:
             return Result(
                 ok=False, error=f"u_vars_update: XML structure unexpected: {e}"
-            )
-
-    @staticmethod
-    def u_enter_room(msg: str) -> Result[Dict[str, Any]]:
-        data = decode.xml(msg)
-        if not data.ok:
-            return Result(ok=False, error=data.error)
-        data = data.value
-
-        try:
-            body = data.find("body")
-            u_el = body.find("u")
-            name_el = u_el.find("n")
-
-            user = {
-                "session_id": int(u_el.get("i")),
-                "username": name_el.text if name_el is not None else None,
-                "rank": 0,
-                "days_old": None,
-                "unparsed": {},
-            }
-
-            for var in u_el.findall(".//vars/var"):
-                n = var.get("n")
-                t = var.get("t")
-                raw = var.text or ""
-
-                if n in KNOWN_USER_VARS:
-                    key, cast = KNOWN_USER_VARS[n]
-                    user[key] = cast(raw)
-                else:
-                    user["unparsed"][n] = {"type": t, "value": raw}
-
-            return Result(ok=True, value=user)
-        except Exception as e:
-            return Result(
-                ok=False, error=f"u_enter_room: XML structure unexpected: {e}"
             )
 
     @staticmethod
