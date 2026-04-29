@@ -378,7 +378,7 @@ class parse:
         o = data.value.get("b", {}).get("o", {})
         if not isinstance(o, dict):
             return Result(ok=False, error="m_ui: invalid 'b.o'")
-        
+
         was_encoded = "enc" in o
         if was_encoded:
 
@@ -387,7 +387,9 @@ class parse:
                 dec = zlib.decompress(base64.b64decode(enc))
                 o = decode.xt(dec.decode())
                 if not o.ok:
-                    return Result(ok=False, error=f"m_ui: inner JSON parse failed: {o.error}")
+                    return Result(
+                        ok=False, error=f"m_ui: inner JSON parse failed: {o.error}"
+                    )
                 o = o.value
             except Exception as e:
                 return Result(ok=False, error=f"m_ui: decompression failed: {e}")
@@ -435,7 +437,7 @@ class parse:
                     "session_id": int(u_el.get("i")),
                     "username": name_el.text if name_el is not None else None,
                     "rank": 0,
-                    "days_old": None,
+                    "age": None,
                     "xml_str": xml_str,
                     "unparsed": {},
                 }
@@ -481,7 +483,7 @@ class parse:
                 "session_id": int(u_el.get("i")),
                 "username": name_el.text if name_el is not None else None,
                 "rank": 0,
-                "days_old": None,
+                "age": None,
                 "unparsed": {},
             }
 
@@ -575,3 +577,59 @@ class parse:
             return Result(ok=True, value={"session_id": session_id, "text": text})
         except Exception as e:
             return Result(ok=False, error=f"dmn_msg: XML structure unexpected: {e}")
+
+    @staticmethod
+    def avt_get_res(msg: str) -> Result[dict]:
+        data = decode.xt(msg)
+        if not data.ok:
+            return Result(ok=False, error=data.error)
+
+        o = data.value.get("b", {}).get("o", {})
+        if not isinstance(o, dict):
+            return Result(ok=False, error="avt_get_res: invalid 'b.o'")
+
+        profile = {
+            "user_id": parse._to_int(o.get("id")),
+            "username": o.get("n"),
+            "age": parse._to_int(o.get("a")),
+            "rank": parse._to_int(o.get("l")),
+            "equipment": o.get("e"),
+            "gallery_creation_count": parse._to_int(o.get("g")),
+            "gallery_followers_count": parse._to_int(o.get("f")),
+            "unparsed": {
+                k: v
+                for k, v in o.items()
+                if k not in {"id", "n", "a", "l", "e", "g", "f", "_cmd"}
+            },
+        }
+
+        return Result(ok=True, value=profile)
+
+    @staticmethod
+    def r_vars_update(msg: str) -> Result[dict]:
+        data = decode.xml(msg)
+        if not data.ok:
+            return Result(ok=False, error=data.error)
+        
+        data = data.value
+        try:
+            body = data.find("body")
+            room_id = int(body.get("r"))
+
+            vars_out = {}
+            for var in body.findall(".//vars/var"):
+                n = var.get("n")
+                t = var.get("t")
+                raw = var.text or t or ""
+
+                if t == "n":
+                    try:
+                        vars_out[n] = int(raw)
+                    except ValueError:
+                        vars_out[n] = raw
+                else:
+                    vars_out[n] = raw
+
+            return Result(ok=True, value={"room_id": room_id, "room_vars": vars_out})
+        except Exception as e:
+            return Result(ok=False, error=f"r_vars_update: XML structure unexpected: {e}")

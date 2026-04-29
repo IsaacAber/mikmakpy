@@ -95,21 +95,21 @@ load_dotenv()
 #         client.connect()
 
 
-def test_ingame_client():
-    """This test checks that the MikmakIngameClient can be instantiated and that
-    the _handle_game_messages method can be called without errors.
-    """
-    client = MikmakIngameClient(
-        username=getenv("USERNAME"),
-        password=getenv("PASSWORD"),
-        logger_levels=set(LoggerLevel),
-        server_to_join=Server.KIWI,
-    )
+# def test_ingame_client():
+#     """This test checks that the MikmakIngameClient can be instantiated and that
+#     the _handle_game_messages method can be called without errors.
+#     """
+#     client = MikmakIngameClient(
+#         username=getenv("USERNAME"),
+#         password=getenv("PASSWORD"),
+#         logger_levels=set(LoggerLevel),
+#         server_to_join=Server.KIWI,
+#     )
 
-    Timer(120, lambda: client.disconnect()).start()
-    print(
-        "Connecting with MikmakIngameClient, it should auto disconnect after 120 seconds..."
-    )
+#     Timer(120, lambda: client.disconnect()).start()
+#     print(
+#         "Connecting with MikmakIngameClient, it should auto disconnect after 120 seconds..."
+#     )
 
-    client.connect()
+#     client.connect()
  

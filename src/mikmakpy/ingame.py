@@ -9,6 +9,7 @@ a game server room.
 from uuid import getnode as get_mac
 import re
 from hashlib import md5
+from time import time
 
 from .constants import (
     LoggerLevel,
@@ -29,7 +30,10 @@ class MikmakIngameClient(MikmakLoginClient):
         self,
         username: str,
         password: str,
-        logger_levels: set[LoggerLevel] = {LoggerLevel.ACTION_WARNING, LoggerLevel.SERVER_DENY},
+        logger_levels: set[LoggerLevel] = {
+            LoggerLevel.ACTION_WARNING,
+            LoggerLevel.SERVER_DENY,
+        },
         mac_address: str = ":".join(
             f"{(get_mac() >> i) & 0xff:02x}" for i in range(40, -1, -8)
         ),
@@ -145,6 +149,42 @@ class MikmakIngameClient(MikmakLoginClient):
                 r=self._c.ingame_state["room_id"],
             )
 
+        def get_profile(self, username: str, timeout: float = 2.5):
+            profile = None
+
+            @self.once("profile_response")
+            def handle_profile_response(data):
+                nonlocal profile
+                profile = data
+
+            self._c._send.xt(
+                "avt_get",
+                p={"n": username},
+                r=self._c.ingame_state["room_id"],
+            )
+
+            startTime = time()
+
+            while profile is None:
+                time.sleep(0.1)
+                if time() - startTime > timeout:  # Timeout after specified seconds
+                    break
+
+            return profile
+
+        def ping_room(self):
+            """Sends a ping to the current room to keep the connection alive. Weird heartbeat mechanism, use with caution, because I can't point a finger on when exactly it's needed."""
+            if self._c.ingame_state["room_id"] is None or ROOM_NAMES.get(self._c.ingame_state["room_id"], None) is None:
+                if LoggerLevel.ACTION_WARNING in self._c.logger_levels:
+                    print("[!] ping_room: not currently in a known room, cannot ping")
+                return
+            
+            self._c._send.xt(
+                "ping",
+                p={"pr": ROOM_NAMES.get(self._c.ingame_state["room_id"], self._c.ingame_state["room_id"])},
+                r=self._c.ingame_state["room_id"],
+            )
+
     def _handle_game_messages(self, msg, action, cmd):
         if action == "joinOK":
             parsed = parse.join_ok(msg)
@@ -190,13 +230,15 @@ class MikmakIngameClient(MikmakLoginClient):
                 if LoggerLevel.PARSING_ERROR in self.logger_levels:
                     print(f"Failed to parse uVarsUpdate message: {parsed.error}")
                 return
+            
+            parsed = parsed.value
 
-            session_id = parsed.value["session_id"]
+            session_id = parsed["session_id"]
             if self.ingame_state["users"] is not None:
                 for user in self.ingame_state["users"]:
                     if user["session_id"] == session_id:
-                        user.update(parsed.value["updated"])
-                        user["unparsed"].update(parsed.value["unparsed"])
+                        user.update(parsed["updated"])
+                        user["unparsed"].update(parsed["unparsed"])
 
                         if (
                             not self._hasSentReadyAfterJoin
@@ -206,9 +248,9 @@ class MikmakIngameClient(MikmakLoginClient):
                                 "f_ready",
                                 r=self.ingame_state["room_id"],
                             )
-                            self._hasSentReadyAfterJoin = True
+                            self._hasSentReadyAfterJoin = True            
 
-            self.emit("user_update", parsed.value)
+            self.emit("user_update", parsed)
 
         elif cmd == "m_ui":
             parsed = parse.m_ui(msg)
@@ -216,11 +258,10 @@ class MikmakIngameClient(MikmakLoginClient):
                 if LoggerLevel.PARSING_ERROR in self.logger_levels:
                     print(f"Failed to parse m_ui message: {parsed.error}")
                 return
-            
-            self.ingame_state["miktok"] = parsed.value.get("o", None)
-    
-            self.emit("miktok_init", parsed.value)
 
+            self.ingame_state["miktok"] = parsed.value.get("o", None)
+
+            self.emit("miktok_init", parsed.value)
 
         elif action == "uER":
             parsed = parse.u_enter_room(msg)
@@ -284,3 +325,28 @@ class MikmakIngameClient(MikmakLoginClient):
             if LoggerLevel.SERVER_DENY in self.logger_levels:
                 print(f"[DENY] dmnMsg received: {msg}")
             self.emit("dmn_msg", parsed.value)
+
+        elif action == "avt_get_res":
+            parsed = parse.avt_get_res(msg)
+            if not parsed.ok:
+                if LoggerLevel.PARSING_ERROR in self.logger_levels:
+                    print(f"Failed to parse avt_get_res message: {parsed.error}")
+                return
+            self.emit("profile_response", parsed.value)
+
+        elif action == "rVarsUpdate":
+            parsed = parse.r_vars_update(msg)
+            if not parsed.ok:
+                if LoggerLevel.PARSING_ERROR in self.logger_levels:
+                    print(f"Failed to parse rVarsUpdate message: {parsed.error}")
+                return
+            
+            room_vars = parsed.value["room_vars"]
+            room_id = parsed.value["room_id"]
+
+            
+
+            print("Library received rVarsUpdate for room", ROOM_NAMES.get(room_id, room_id), "with vars:", room_vars)
+            with open("rVarsUpdate_messages.log", "a") as f:
+                f.write(f"{room_id}: {room_vars}\n")
+

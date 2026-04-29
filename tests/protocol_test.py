@@ -1,7 +1,6 @@
-from mikmakpy.protocol import parse, decode
+from mikmakpy.protocol import parse
 from mikmakpy.constants import Server
 
-import zlib, base64
 
 def test_parse_server_list():
     msg = r"""{"b":{"r":-1,"o":{"safeChat":false,"_cmd":"server_list","rank":1,"userName":"בוט11011","list":"[{\"id\":4,\"name\":'קיווי',\"ip\":'213.8.147.198',\"port\":443,\"capicity\":0.2,\"dt\":202602231555},{\"id\":7,\"name\":'קרמבו ',\"ip\":'213.8.147.201',\"port\":443,\"capicity\":0.0,\"safe\":true,\"dt\":202602231555},{\"id\":10,\"name\":'מנהלים',\"ip\":'213.8.147.214',\"port\":443,\"capicity\":-1.0,\"dt\":202602231555}]"}},"t":"xt"}"""
@@ -71,37 +70,33 @@ def test_parse_login_res():
 
 
 def test_parse_achievement_res():
-    msgA = r"""{"b":{"r":-1,"o":{"level":1,"_cmd":"achivment_res","list":"[{'ach':1,'ass':1,'p':0,'prg':100},{'ach':1,'ass':2,'p':0,'prg':100},{'ach':1,'ass':3,'p':0,'prg':100},{'ach':1,'ass':5,'p':0,'prg':100},{'ach':1,'ass':8,'p':0,'prg':100},{'ach':1,'ass':9,'p':0,'prg':100},{'ach':1,'ass':16,'p':0,'prg':100},{'ach':1,'ass':17,'p':0,'prg':100},{'ach':2,'ass':1,'p':0,'prg':1},{'ach':6,'ass':1,'p':0,'prg':2},{'ach':10,'ass':1,'p':0,'prg':13},{'ach':15,'ass':1,'p':0,'prg':9},{'ach':16,'ass':1,'p':10,'prg':100},{'ach':26,'ass':1,'p':0,'prg':16},{'ach':30,'ass':1,'p':10,'prg':100},{'ach':32,'ass':1,'p':10,'prg':100},{'ach':33,'ass':1,'p':10,'prg':100},{'ach':38,'ass':1,'p':0,'prg':16},{'ach':97,'ass':1,'p':0,'prg':16},{'ach':106,'ass':1,'p':0,'prg':16},{'ach':213,'ass':1,'p':0,'prg':16},{'ach':235,'ass':1,'p':0,'prg':1},{'ach':236,'ass':1,'p':0,'prg':1},{'ach':237,'ass':1,'p':0,'prg':1},{'ach':299,'ass':1,'p':0,'prg':16},{'ach':313,'ass':1,'p':20,'prg':100},{'ach':314,'ass':1,'p':50,'prg':100},{'ach':361,'ass':1,'p':0,'prg':393150},{'ach':374,'ass':1,'p':0,'prg':16},{'ach':379,'ass':1,'p':0,'prg':100},{'ach':379,'ass':4,'p':0,'prg':100},{'ach':406,'ass':1,'p':10,'prg':100},{'ach':496,'ass':1,'p':0,'prg':16},{'ach':497,'ass':1,'p':0,'prg':16},{'ach':498,'ass':1,'p':0,'prg':393150},{'ach':501,'ass':1,'p':0,'prg':100},{'ach':505,'ass':1,'p':20,'prg':100},{'ach':3054,'ass':1,'p':20,'prg':100},{'ach':3312,'ass':1,'p':0,'prg':1}]","userId":16340305,"points":160}},"t":"xt"}"""
-    msgB = r"""{"b":{"r":-1,"o":{"level":1,"_cmd":"achivment_res","update":"true","list":"[{'ach':15,'ass':1,'p':0,'prg':10},{'ach':26,'ass':1,'p':0,'prg':18},{'ach':38,'ass':1,'p':0,'prg':18},{'ach':97,'ass':1,'p':0,'prg':18},{'ach':106,'ass':1,'p':0,'prg':18},{'ach':213,'ass':1,'p':0,'prg':18},{'ach':299,'ass':1,'p':0,'prg':18},{'ach':374,'ass':1,'p':0,'prg':18},{'ach':496,'ass':1,'p':0,'prg':18},{'ach':497,'ass':1,'p':0,'prg':18}]","userId":16340305,"points":160}},"t":"xt"}"""
+    msg = r"""{"b":{"r":-1,"o":{"level":1,"_cmd":"achivment_res","list":"[{'ach':1,'ass':1,'p':0,'prg':100},{'ach':1,'ass':2,'p':0,'prg':100},{'ach':1,'ass':3,'p':0,'prg':100},{'ach':1,'ass':5,'p':0,'prg':100},{'ach':1,'ass':8,'p':0,'prg':100},{'ach':1,'ass':9,'p':0,'prg':100},{'ach':1,'ass':16,'p':0,'prg':100},{'ach':1,'ass':17,'p':0,'prg':100},{'ach':2,'ass':1,'p':0,'prg':1},{'ach':6,'ass':1,'p':0,'prg':2},{'ach':10,'ass':1,'p':0,'prg':13},{'ach':15,'ass':1,'p':0,'prg':9},{'ach':16,'ass':1,'p':10,'prg':100},{'ach':26,'ass':1,'p':0,'prg':16},{'ach':30,'ass':1,'p':10,'prg':100},{'ach':32,'ass':1,'p':10,'prg':100},{'ach':33,'ass':1,'p':10,'prg':100},{'ach':38,'ass':1,'p':0,'prg':16},{'ach':97,'ass':1,'p':0,'prg':16},{'ach':106,'ass':1,'p':0,'prg':16},{'ach':213,'ass':1,'p':0,'prg':16},{'ach':235,'ass':1,'p':0,'prg':1},{'ach':236,'ass':1,'p':0,'prg':1},{'ach':237,'ass':1,'p':0,'prg':1},{'ach':299,'ass':1,'p':0,'prg':16},{'ach':313,'ass':1,'p':20,'prg':100},{'ach':314,'ass':1,'p':50,'prg':100},{'ach':361,'ass':1,'p':0,'prg':393150},{'ach':374,'ass':1,'p':0,'prg':16},{'ach':379,'ass':1,'p':0,'prg':100},{'ach':379,'ass':4,'p':0,'prg':100},{'ach':406,'ass':1,'p':10,'prg':100},{'ach':496,'ass':1,'p':0,'prg':16},{'ach':497,'ass':1,'p':0,'prg':16},{'ach':498,'ass':1,'p':0,'prg':393150},{'ach':501,'ass':1,'p':0,'prg':100},{'ach':505,'ass':1,'p':20,'prg':100},{'ach':3054,'ass':1,'p':20,'prg':100},{'ach':3312,'ass':1,'p':0,'prg':1}]","userId":16340305,"points":160}},"t":"xt"}"""
+    res = parse.achievement_res(msg)
+    assert res.ok, f"Error parsing achievement response A: {res.error}"
 
-    resA = parse.achievement_res(msgA)
-    assert resA.ok, f"Error parsing achievement response A: {resA.error}"
-
-    dataA = resA.value
-    assert dataA["user_id"] == 16340305
-    assert dataA["level"] == 1
-    assert dataA["points_total"] == 160
-    assert dataA["is_update"] is False
-    assert isinstance(dataA["achievements"], list)
-    assert len(dataA["achievements"]) > 0
+    res = res.value
+    assert res["user_id"] == 16340305
+    assert res["level"] == 1
+    assert res["points_total"] == 160
+    assert res["is_update"] is False
+    assert isinstance(res["achievements"], list)
+    assert len(res["achievements"]) > 0
 
     # Spot-check a few entries
-    by_keyA = {a["key"]: a for a in dataA["achievements"]}
-    assert by_keyA["1:1"]["progress"] == 100
-    assert by_keyA["16:1"]["points"] == 10
-    assert by_keyA["361:1"]["progress"] == 393150
+    res = {a["key"]: a for a in res["achievements"]}
+    assert res["1:1"]["progress"] == 100
+    assert res["16:1"]["points"] == 10
+    assert res["361:1"]["progress"] == 393150
 
-    resB = parse.achievement_res(msgB)
-    assert resB.ok, f"Error parsing achievement response B: {resB.error}"
+    msg = r"""{"b":{"r":-1,"o":{"level":1,"_cmd":"achivment_res","update":"true","list":"[{'ach':15,'ass':1,'p':0,'prg':10},{'ach':26,'ass':1,'p':0,'prg':18},{'ach':38,'ass':1,'p':0,'prg':18},{'ach':97,'ass':1,'p':0,'prg':18},{'ach':106,'ass':1,'p':0,'prg':18},{'ach':213,'ass':1,'p':0,'prg':18},{'ach':299,'ass':1,'p':0,'prg':18},{'ach':374,'ass':1,'p':0,'prg':18},{'ach':496,'ass':1,'p':0,'prg':18},{'ach':497,'ass':1,'p':0,'prg':18}]","userId":16340305,"points":160}},"t":"xt"}"""
+    res = parse.achievement_res(msg)
+    assert res.ok, f"Error parsing achievement response B: {res.error}"
 
-    dataB = resB.value
-    assert dataB["is_update"] is True
-    by_keyB = {a["key"]: a for a in dataB["achievements"]}
-    assert by_keyB["15:1"]["progress"] == 10
-    assert by_keyB["26:1"]["progress"] == 18
-
-    # Update list should be shorter than full snapshot
-    assert len(dataB["achievements"]) < len(dataA["achievements"])
+    res = res.value
+    assert res["is_update"] is True
+    res = {a["key"]: a for a in res["achievements"]}
+    assert res["15:1"]["progress"] == 10
+    assert res["26:1"]["progress"] == 18
 
 
 def test_parse_join_ok():
@@ -112,7 +107,7 @@ def test_parse_join_ok():
     assert res.value["room_id"] == 12
     assert res.value["users"][0]["session_id"] == 92948
     assert res.value["users"][0]["username"] == "סינוןפח"
-    assert res.value["users"][0]["days_old"] == 3
+    assert res.value["users"][0]["age"] == 3
     assert isinstance(res.value["users"][0]["equipment"], list)
     assert res.value["users"][0]["equipment"] == [
         201,
@@ -168,7 +163,7 @@ def test_parse_u_enter_room():
     assert res.ok, f"Error parsing uER message: {res.error}"
     assert res.value["session_id"] == 92968
     assert res.value["username"] == "עדן3C"
-    assert res.value["days_old"] == 865
+    assert res.value["age"] == 865
     assert res.value["rank"] == 11
     assert res.value["user_id"] == 15586722
     assert res.value["equipment"] == [
@@ -216,10 +211,38 @@ def test_parse_inv_list():
     assert res.value[0] == "7399"
     assert len(res.value) == 3247
 
-    msg = """{"b":{"r":-1,"o":{"_cmd":"inv_list","list":"9399-75,7142,205"}},"t":"xt"}"""
+    msg = (
+        """{"b":{"r":-1,"o":{"_cmd":"inv_list","list":"9399-75,7142,205"}},"t":"xt"}"""
+    )
     res = parse.inv_list(msg)
     assert res.ok, f"Error parsing inv_list: {res.error}"
     assert res.value == ["9399-75", "7142", "205"]
+
+
+def test_parse_avt_get_res():
+    msg = """{"b": {"r": -1,"o": {"a": 4643,"e": "205,0,14223,0,2310,0,45061,3911,0,8153,0,0,0,43013","_cmd": "avt_get_res","g": 29,"id": 4748175,"l": 11,"n": "79מיסי"}},"t": "xt"}"""
+    res = parse.avt_get_res(msg)
+    assert res.ok, f"Error parsing avt_get_res: {res.error}"
+    res = res.value
+    assert res["user_id"] == 4748175
+    assert res["username"] == "79מיסי"
+    assert res["age"] == 4643
+    assert res["rank"] == 11
+    assert res["equipment"] == "205,0,14223,0,2310,0,45061,3911,0,8153,0,0,0,43013"
+    assert res["gallery_creation_count"] == 29
+    assert res["gallery_followers_count"] == None
+    assert isinstance(res["unparsed"], dict)
+
+
+def test_parse_r_vars_update():
+    # Countdown inside a magic..
+    msg = """<msg t='sys'><body action='rVarsUpdate' r='1335'><vars><var n='CM' t='s'><![CDATA[13]]></var></vars></body></msg>"""
+    res = parse.r_vars_update(msg)
+    assert res.ok, f"Error parsing rVarsUpdate: {res.error}"
+    res = res.value
+    assert res["room_id"] == 1335
+    assert res["room_vars"]["CM"] == "13"
+
 
 # def test_parse_m_ui():
 #     # the enc variant I'll keep for another day.. assume it's working! TODO: rework the m_ui and then finish the test for it

@@ -986,7 +986,7 @@ ROOM_DEFAULT_SPAWN_POSITIONS: dict[int, tuple[int, int]] = dict(
 
 # user variables keys converted into normal format for cleaner access.
 KNOWN_USER_VARS = {
-    "d": ("days_old", int),
+    "d": ("age", int),
     "e": ("equipment", lambda v: list(map(int, v.split(",")))),
     "i": ("user_id", int),
     "l": ("rank", int),

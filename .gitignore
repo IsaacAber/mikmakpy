@@ -9,3 +9,4 @@ build/
 creds.json
 src/tools/*
 !src/tools/sniffer.py
+examples/rVarsUpdate_messages.log
